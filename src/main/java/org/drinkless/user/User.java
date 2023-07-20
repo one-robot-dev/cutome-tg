@@ -9,6 +9,7 @@ package org.drinkless.user;
 
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
+import org.drinkless.user.message.LastMsgHandlerType;
 
 import java.io.BufferedReader;
 import java.io.IOError;
@@ -26,34 +27,44 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class User {
 
-    private final String phoneNumber;
+    public static final Properties replyGroupProperties = new Properties();
 
-    private final Set<String> noListenUser;
+    public static final Properties replyUserProperties = new Properties();
+
+    public final String phoneNumber;
+
+    public final Set<Long> noListenUser;
 
     private final String receiveGroupName;
 
-    private long receiveGroupId;
+    public final int checkInterval;
+
+    public final int startTime;
+
+    public long receiveGroupId;
 
     private final Map<Long, Long> lastMsgId = new HashMap<>();
 
-    private Client client;
+    public final Map<Long, Long> userLastMsgTime = new HashMap<>();
+
+    public Client client;
 
     private TdApi.AuthorizationState authorizationState;
     private volatile boolean haveAuthorization;
     private volatile boolean needQuit;
     private volatile boolean canQuit;
 
-    private final Client.ResultHandler defaultHandler = new User.DefaultHandler();
+    public final Client.ResultHandler defaultHandler = new User.DefaultHandler();
 
     private final Lock authorizationLock = new ReentrantLock();
     private final Condition gotAuthorization = authorizationLock.newCondition();
 
-    private final ConcurrentMap<Long, TdApi.User> users = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Long, TdApi.BasicGroup> basicGroups = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Long, TdApi.Supergroup> supergroups = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Integer, TdApi.SecretChat> secretChats = new ConcurrentHashMap<>();
+    public final ConcurrentMap<Long, TdApi.User> users = new ConcurrentHashMap<>();
+    public final ConcurrentMap<Long, TdApi.BasicGroup> basicGroups = new ConcurrentHashMap<>();
+    public final ConcurrentMap<Long, TdApi.Supergroup> supergroups = new ConcurrentHashMap<>();
+    public final ConcurrentMap<Integer, TdApi.SecretChat> secretChats = new ConcurrentHashMap<>();
 
-    private final ConcurrentMap<Long, TdApi.Chat> chats = new ConcurrentHashMap<>();
+    public final ConcurrentMap<Long, TdApi.Chat> chats = new ConcurrentHashMap<>();
     private final NavigableSet<OrderedChat> mainChatList = new TreeSet<>();
     private boolean haveFullMainChatList;
 
@@ -62,13 +73,16 @@ public class User {
     private final ConcurrentMap<Long, TdApi.SupergroupFullInfo> supergroupsFullInfo = new ConcurrentHashMap<>();
 
     private final String newLine = System.getProperty("line.separator");
-    private final String commandsLine = "Enter command (gcs - GetChats, gc <chatId> - GetChat, me - GetMe, sm <chatId> <message> - SendMessage, lo - LogOut, q - Quit): ";
+//    private final String commandsLine = "Enter command (gcs - GetChats, gc <chatId> - GetChat, me - GetMe, sm <chatId> <message> - SendMessage, lo - LogOut, q - Quit): ";
+    private final String commandsLine = "输入命令 (getId <username> - 根据username获取id， me - 获取自己的信息): ";
     private volatile String currentPrompt = null;
 
-    public User(String phoneNumber, Set<String> noListenUser, String receiveGroupName) {
+    public User(String phoneNumber, Set<Long> noListenUser, String receiveGroupName, int checkInterval) {
         this.phoneNumber = phoneNumber;
         this.noListenUser = noListenUser;
         this.receiveGroupName = receiveGroupName;
+        this.checkInterval = checkInterval;
+        this.startTime = (int)(System.currentTimeMillis() / 1000);
     }
 
     public void start() throws InterruptedException {
@@ -111,10 +125,10 @@ public class User {
 
     private class UpdateHandler implements Client.ResultHandler {
 
-        private User user;
+        private final User clientUser;
 
-        public UpdateHandler(User user) {
-            this.user = user;
+        public UpdateHandler(User clientUser) {
+            this.clientUser = clientUser;
         }
         @Override
         public void onResult(TdApi.Object object) {
@@ -151,8 +165,8 @@ public class User {
                 case TdApi.UpdateNewChat.CONSTRUCTOR: {
                     TdApi.UpdateNewChat updateNewChat = (TdApi.UpdateNewChat) object;
                     TdApi.Chat chat = updateNewChat.chat;
-                    if (chat.title.equals(user.receiveGroupName)) {
-                        user.receiveGroupId = chat.id;
+                    if (chat.title.equals(clientUser.receiveGroupName)) {
+                        clientUser.receiveGroupId = chat.id;
                     }
                     synchronized (chat) {
                         chats.put(chat.id, chat);
@@ -186,35 +200,13 @@ public class User {
                         chat.lastMessage = updateChat.lastMessage;
                         setChatPositions(chat, updateChat.positions);
                     }
-                    if (updateChat.lastMessage.id <= lastMsgId.getOrDefault(updateChat.chatId, 0L)) {
+                    if (updateChat.lastMessage.id <= clientUser.lastMsgId.getOrDefault(updateChat.chatId, 0L)) {
                         break;
                     }
                     lastMsgId.put(updateChat.chatId, updateChat.lastMessage.id);
-                    TdApi.MessageSender sender = updateChat.lastMessage.senderId;
-                    if (user.receiveGroupId == 0 || user.receiveGroupId == updateChat.chatId || sender.getConstructor() != TdApi.MessageSenderUser.CONSTRUCTOR) {
-                        break;
+                    for (LastMsgHandlerType handlerType : LastMsgHandlerType.values()) {
+                        handlerType.getHandler().handle(clientUser, updateChat);
                     }
-                    long userId = ((TdApi.MessageSenderUser)sender).userId;
-                    TdApi.User user = users.get(userId);
-                    if (user == null) {
-                        break;
-                    }
-                    String userName = Optional.of(user.usernames).map(usernames -> usernames.activeUsernames).filter(names -> names.length > 0).map(names -> names[0]).orElse("");
-                    if ("".equals(userName) || noListenUser.contains(userName)) {
-                        break;
-                    }
-                    TdApi.Chat room = chats.get(updateChat.lastMessage.chatId);
-                    TdApi.MessageContent content = updateChat.lastMessage.content;
-                    String msg;
-                    if (content.getConstructor() == TdApi.MessageText.CONSTRUCTOR) {
-                        msg = "文字消息:\n" + ((TdApi.MessageText) content).text.text;
-                    } else {
-                        msg = "非文字消息:\n" + content.getClass().getSimpleName();
-                    }
-                    msg = "\"" + user.firstName + "-" + userName + "\", 在\"" + room.title + "\"中说话\n" + msg;
-                    TdApi.FormattedText text = new TdApi.FormattedText(msg, null);
-                    TdApi.InputMessageContent sendContent = new TdApi.InputMessageText(text, false, true);
-                    client.send(new TdApi.SendMessage(this.user.receiveGroupId, 0, 0, null, null, sendContent), defaultHandler);
                     break;
                 }
                 case TdApi.UpdateChatPosition.CONSTRUCTOR: {
@@ -496,6 +488,15 @@ public class User {
         String[] commands = command.split(" ", 2);
         try {
             switch (commands[0]) {
+                case "getId": {
+                    for (TdApi.User user : users.values()) {
+                        String userName = Optional.ofNullable(user.usernames).map(usernames -> usernames.activeUsernames).filter(names -> names.length > 0).map(names -> names[0]).orElse("");
+                        if (userName.equals(commands[1])) {
+                            print(String.valueOf(user.id));
+                        }
+                    }
+                    break;
+                }
                 case "gcs": {
                     int limit = 20;
                     if (commands.length > 1) {

@@ -11,7 +11,7 @@ import java.util.*;
 
 public class Start {
 
-    private static final Properties properties = new Properties();
+    private static final Properties appProperties = new Properties();
 
     static {
         try {
@@ -23,15 +23,25 @@ public class Start {
             String path = Thread.currentThread().getContextClassLoader().getResource("").getPath();
             System.out.printf(path);
             File file = new File(path,"app.properties");
-            properties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+            appProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+            file = new File(path, "reply-group.properties");
+            User.replyGroupProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+            file = new File(path, "reply-user.properties");
+            User.replyUserProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
     public static void main(String[] args) throws InterruptedException {
-        String phone = properties.getProperty("主账号");
-        Set<String> noListener = new HashSet<>(Arrays.asList(properties.getProperty("不监听的用户").split(",")));
-        String receiveMsgGroup = properties.getProperty("接收消息提醒的群");
+        String phone = appProperties.getProperty("主账号");
+        String noListenerUser = appProperties.getProperty("不监听的用户","");
+        Set<Long> noListener = new HashSet<>();
+        if (noListenerUser != null && !noListenerUser.trim().equals("")) {
+            for (String id : noListenerUser.split(",")) {
+                noListener.add(Long.parseLong(id)) ;
+            }
+        }
+        String receiveMsgGroup = appProperties.getProperty("接收消息提醒的群");
         if (phone == null || "".equals(phone)) {
             System.out.printf("必须配置主账号");
             return;
@@ -40,7 +50,8 @@ public class Start {
             System.out.printf("必须配置接收消息提醒的group");
             return;
         }
-        new User(phone, noListener, receiveMsgGroup).start();
+        String checkInterval = appProperties.getProperty("每个用户消息监听间隔", "10");
+        new User(phone, noListener, receiveMsgGroup, Integer.parseInt(checkInterval)).start();
     }
 
 }
