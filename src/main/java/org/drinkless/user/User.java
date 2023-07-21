@@ -22,6 +22,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
  * Example class for TDLib usage from Java.
  */
@@ -489,12 +492,22 @@ public class User {
         try {
             switch (commands[0]) {
                 case "getId": {
+                    if (commands.length != 2) {
+                        print("输入格式不对，例如：getId abc 或 getId abc,efg");
+                        break;
+                    }
+                    Set<String> nameSet = Stream.of(commands[1].split(",")).filter(name -> !name.trim().equals("")).collect(Collectors.toSet());
+                    if (nameSet.isEmpty()) {
+                        print("输入格式不对，例如：getId abc 或 getId abc,efg");
+                        break;
+                    }
                     for (TdApi.User user : users.values()) {
                         String userName = Optional.ofNullable(user.usernames).map(usernames -> usernames.activeUsernames).filter(names -> names.length > 0).map(names -> names[0]).orElse("");
-                        if (userName.equals(commands[1])) {
-                            print(String.valueOf(user.id));
+                        if (nameSet.contains(userName)) {
+                            System.out.print(user.id + ",");
                         }
                     }
+                    System.out.println();
                     break;
                 }
                 case "gcs": {
