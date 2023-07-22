@@ -8,7 +8,7 @@ import java.util.Properties;
 /**
  * 最新消息回复
  */
-public class LastMsgReplyGroupHandler implements LastMsgHandler{
+public class LastMsgReplyHandler implements LastMsgHandler{
 
     @Override
     public void handle(User clientUser, TdApi.UpdateChatLastMessage updateChat) {

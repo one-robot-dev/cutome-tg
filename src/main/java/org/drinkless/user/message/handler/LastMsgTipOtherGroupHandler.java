@@ -30,7 +30,7 @@ public class LastMsgTipOtherGroupHandler implements LastMsgHandler{
         }
         clientUser.userLastMsgTime.put(userId, System.currentTimeMillis());
         String userName = Optional.ofNullable(user.usernames).map(usernames -> usernames.activeUsernames).filter(names -> names.length > 0).map(names -> names[0]).orElse("");
-        if ("".equals(userName) || clientUser.noListenUser.contains(userId)) {
+        if ("".equals(userName) || clientUser.noListenUserId.contains(userId) || clientUser.noListenUserName.contains(userName)) {
             return;
         }
         TdApi.Chat room = clientUser.chats.get(updateChat.lastMessage.chatId);

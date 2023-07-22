@@ -7,6 +7,7 @@ package org.drinkless.user;
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+import org.drinkless.Start;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 import org.drinkless.user.message.LastMsgHandlerType;
@@ -30,19 +31,21 @@ import java.util.stream.Stream;
  */
 public class User {
 
-    public static final Properties replyGroupProperties = new Properties();
+    public static Properties replyGroupProperties;
 
-    public static final Properties replyUserProperties = new Properties();
+    public static Properties replyUserProperties;
 
-    public final String phoneNumber;
+    public String phoneNumber;
 
-    public final Set<Long> noListenUser;
+    public Set<Long> noListenUserId;
 
-    private final String receiveGroupName;
+    public Set<String> noListenUserName;
 
-    public final int checkInterval;
+    public String receiveGroupName;
 
-    public final int startTime;
+    public int checkInterval;
+
+    public final int startTime = (int)(System.currentTimeMillis() / 1000);
 
     public long receiveGroupId;
 
@@ -77,16 +80,8 @@ public class User {
 
     private final String newLine = System.getProperty("line.separator");
 //    private final String commandsLine = "Enter command (gcs - GetChats, gc <chatId> - GetChat, me - GetMe, sm <chatId> <message> - SendMessage, lo - LogOut, q - Quit): ";
-    private final String commandsLine = "输入命令 (getId <username> - 根据username获取id， me - 获取自己的信息): ";
+    private final String commandsLine = "命令选项\n\t命令1：getId 用户名1,用户名2,...\t含义：根据username获取id\n\t命令2：me\t\t\t\t\t\t含义：获取自己的信息\n\t命令3：refresh_prop\t\t\t\t含义：重新加载配置，不支持刷新主账号\n请输入命令: ";
     private volatile String currentPrompt = null;
-
-    public User(String phoneNumber, Set<Long> noListenUser, String receiveGroupName, int checkInterval) {
-        this.phoneNumber = phoneNumber;
-        this.noListenUser = noListenUser;
-        this.receiveGroupName = receiveGroupName;
-        this.checkInterval = checkInterval;
-        this.startTime = (int)(System.currentTimeMillis() / 1000);
-    }
 
     public void start() throws InterruptedException {
         // set log message handler to handle only fatal errors (0) and plain log messages (-1)
@@ -491,6 +486,9 @@ public class User {
         String[] commands = command.split(" ", 2);
         try {
             switch (commands[0]) {
+                case "refresh_prop":
+                    Start.refreshProperties(this);
+                    break;
                 case "getId": {
                     if (commands.length != 2) {
                         print("输入格式不对，例如：getId abc 或 getId abc,efg");

@@ -1,14 +1,16 @@
 package org.drinkless.user.message;
 
 import org.drinkless.user.message.handler.LastMsgHandler;
-import org.drinkless.user.message.handler.LastMsgReplyGroupHandler;
+import org.drinkless.user.message.handler.LastMsgReplyHandler;
 import org.drinkless.user.message.handler.LastMsgTipOtherGroupHandler;
 
 public enum LastMsgHandlerType {
 
     TIP_OTHER_GROUP(new LastMsgTipOtherGroupHandler()),
 
-    REPLY(new LastMsgReplyGroupHandler()),
+    REPLY(new LastMsgReplyHandler()),
+
+//    FORWARD(new LastMsgForwardHandler()),
     ;
 
     private final LastMsgHandler handler;
