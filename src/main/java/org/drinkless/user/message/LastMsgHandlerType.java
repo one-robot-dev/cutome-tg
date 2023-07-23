@@ -10,7 +10,6 @@ public enum LastMsgHandlerType {
 
     REPLY(new LastMsgReplyHandler()),
 
-//    FORWARD(new LastMsgForwardHandler()),
     ;
 
     private final LastMsgHandler handler;

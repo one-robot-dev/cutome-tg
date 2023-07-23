@@ -1,7 +1,7 @@
 package org.drinkless.user.message.handler;
 
 import org.drinkless.tdlib.TdApi;
-import org.drinkless.user.User;
+import org.drinkless.user.MainUser;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -12,28 +12,28 @@ import java.util.concurrent.TimeUnit;
 public class LastMsgTipOtherGroupHandler implements LastMsgHandler{
 
     @Override
-    public void handle(User clientUser, TdApi.UpdateChatLastMessage updateChat) {
-        if (clientUser.startTime > updateChat.lastMessage.date) {
+    public void handle(MainUser clientMainUser, TdApi.UpdateChatLastMessage updateChat) {
+        if (clientMainUser.startTime > updateChat.lastMessage.date) {
             return;
         }
         TdApi.MessageSender sender = updateChat.lastMessage.senderId;
-        if (clientUser.receiveGroupId == 0 || clientUser.receiveGroupId == updateChat.chatId || sender.getConstructor() != TdApi.MessageSenderUser.CONSTRUCTOR) {
+        if (clientMainUser.receiveGroupId == 0 || clientMainUser.receiveGroupId == updateChat.chatId || sender.getConstructor() != TdApi.MessageSenderUser.CONSTRUCTOR) {
             return;
         }
         long userId = ((TdApi.MessageSenderUser)sender).userId;
-        TdApi.User user = clientUser.users.get(userId);
+        TdApi.User user = clientMainUser.users.get(userId);
         if (user == null) {
             return;
         }
-        if (System.currentTimeMillis() - clientUser.userLastMsgTime.getOrDefault(userId, 0L) < TimeUnit.MINUTES.toMillis(clientUser.checkInterval)) {
+        if (System.currentTimeMillis() - clientMainUser.userLastMsgTime.getOrDefault(userId, 0L) < TimeUnit.MINUTES.toMillis(clientMainUser.checkInterval)) {
             return;
         }
-        clientUser.userLastMsgTime.put(userId, System.currentTimeMillis());
+        clientMainUser.userLastMsgTime.put(userId, System.currentTimeMillis());
         String userName = Optional.ofNullable(user.usernames).map(usernames -> usernames.activeUsernames).filter(names -> names.length > 0).map(names -> names[0]).orElse("");
-        if ("".equals(userName) || clientUser.noListenUserId.contains(userId) || clientUser.noListenUserName.contains(userName)) {
+        if ("".equals(userName) || clientMainUser.noListenUserId.contains(userId) || clientMainUser.noListenUserName.contains(userName)) {
             return;
         }
-        TdApi.Chat room = clientUser.chats.get(updateChat.lastMessage.chatId);
+        TdApi.Chat room = clientMainUser.chats.get(updateChat.lastMessage.chatId);
         TdApi.MessageContent content = updateChat.lastMessage.content;
         String msg;
         if (content.getConstructor() == TdApi.MessageText.CONSTRUCTOR) {
@@ -44,7 +44,7 @@ public class LastMsgTipOtherGroupHandler implements LastMsgHandler{
         msg = "\"" + user.firstName + "-" + userName + "\", 在\"" + room.title + "\"中说话\n" + msg;
         TdApi.FormattedText text = new TdApi.FormattedText(msg, null);
         TdApi.InputMessageContent sendContent = new TdApi.InputMessageText(text, false, true);
-        clientUser.client.send(new TdApi.SendMessage(clientUser.receiveGroupId, 0, 0, null, null, sendContent), clientUser.defaultHandler);
+        clientMainUser.client.send(new TdApi.SendMessage(clientMainUser.receiveGroupId, 0, 0, null, null, sendContent), clientMainUser.defaultHandler);
     }
 
 }

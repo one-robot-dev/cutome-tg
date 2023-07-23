@@ -1,5 +1,7 @@
 package org.drinkless;
 
+import org.drinkless.tdlib.TdApi;
+import org.drinkless.user.MainUser;
 import org.drinkless.user.User;
 
 import java.io.File;
@@ -7,10 +9,20 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Start {
 
-    private static Properties appProperties;
+    public static Properties appProperties;
+
+    private static final MainUser mainUser = new MainUser();
+
+    private static final ScheduledExecutorService schedule = Executors.newScheduledThreadPool(16);
+
+    private final static Map<String, User> loginPhoneUserMap = new ConcurrentHashMap<>();
 
     static {
         try {
@@ -21,30 +33,30 @@ public class Start {
 
     }
     public static void main(String[] args) throws Exception {
-        User user = new User();
-        boolean success = refreshProperties(user);
+        //加载配置
+        boolean success = refreshProperties(mainUser);
         if (!success)  {
             return;
         }
-        user.start();
+        //加载保持登录状态的账号
+        loadLoginUser();
+        //登陆主用户
+        mainUser.start();
+        //启动定时任务
+        startSchedule();
+        while (!mainUser.canQuit) {
+            Thread.sleep(TimeUnit.SECONDS.toMillis(5));
+        }
+        loginPhoneUserMap.values().forEach(User::quit);
+        for (User user : loginPhoneUserMap.values()) {
+            while (!user.canQuit) {
+                Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+            }
+        }
+        System.exit(0);
     }
 
-    private static void loadProperties() throws Exception{
-        String path = Thread.currentThread().getContextClassLoader().getResource("").getPath();
-        File file = new File(path,"app.properties");
-        appProperties = new Properties();
-        appProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
-        file = new File(path, "reply-group.properties");
-        Properties replyGroupProperties = new Properties();
-        replyGroupProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
-        file = new File(path, "reply-user.properties");
-        Properties replyUserProperties = new Properties();
-        replyUserProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
-        User.replyGroupProperties = replyGroupProperties;
-        User.replyUserProperties = replyUserProperties;
-    }
-
-    public static boolean refreshProperties(User user) {
+    public static boolean refreshProperties(MainUser mainUser) {
         try {
             loadProperties();
             String phone = appProperties.getProperty("主账号");
@@ -67,11 +79,11 @@ public class Start {
                 return false;
             }
             Set<String> noListerName = new HashSet<>(Arrays.asList(noListenerUserName.split(",")));
-            user.phoneNumber = user.phoneNumber == null ? phone : user.phoneNumber;
-            user.noListenUserId = noListenUserId;
-            user.noListenUserName = noListerName;
-            user.receiveGroupName = receiveMsgGroup;
-            user.checkInterval = Integer.parseInt(checkInterval);
+            mainUser.phoneNumber = mainUser.phoneNumber == null ? phone : mainUser.phoneNumber;
+            mainUser.noListenUserId = noListenUserId;
+            mainUser.noListenUserName = noListerName;
+            mainUser.receiveGroupName = receiveMsgGroup;
+            mainUser.checkInterval = Integer.parseInt(checkInterval);
             System.out.println("=========================================配置加载成功====================================================");
             return true;
         } catch (Exception e) {
@@ -79,4 +91,72 @@ public class Start {
         }
     }
 
+    private static void loadProperties() throws Exception{
+        String path = Thread.currentThread().getContextClassLoader().getResource("").getPath();
+        File file = new File(path,"app.properties");
+        appProperties = new Properties();
+        appProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+        file = new File(path, "reply-group.properties");
+        Properties replyGroupProperties = new Properties();
+        replyGroupProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+        file = new File(path, "reply-user.properties");
+        Properties replyUserProperties = new Properties();
+        replyUserProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+        MainUser.replyGroupProperties = replyGroupProperties;
+        MainUser.replyUserProperties = replyUserProperties;
+    }
+
+    private static void loadLoginUser() {
+        String loginUser =  appProperties.getProperty("保持登录状态的账号");
+        if (loginUser == null || loginUser.trim().equals("")) {
+            return;
+        }
+        Set<String> loginUserSet = new HashSet<>(Arrays.asList(loginUser.split(",")));
+        loginUserSet.remove(appProperties.getProperty("主账号"));
+        for (String phone : loginUserSet) {
+            User user = new User();
+            new Thread(() -> {
+                user.phoneNumber = phone;
+                try {
+                    user.start();
+                    while (!user.canQuit) {
+                        Thread.sleep(TimeUnit.MINUTES.toMillis(1));
+                    }
+                } catch (InterruptedException e) {
+                    System.out.println(phone + "账号失败退出了");
+                    user.haveAuthorization = true;
+                }
+            }).start();
+            try {
+                while (!user.haveAuthorization) {
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(2));
+                }
+                loginPhoneUserMap.put(phone, user);
+            } catch (InterruptedException e) {
+                System.out.println(phone + "账号等待登录异常");
+            }
+        }
+    }
+
+    private static void startSchedule() {
+        //主账号发送心跳
+        schedule.scheduleWithFixedDelay(() -> {
+            mainUser.client.send(new TdApi.SetOption("online", new TdApi.OptionValueBoolean(true)), obj -> {
+                if (!(obj instanceof TdApi.Ok)) {
+                    mainUser.print(mainUser.phoneNumber + "主-账号设置登录状态失败！！！！！！！！！！！！！！！！！！！！！");
+                }
+            });
+        }, 1, 2, TimeUnit.MINUTES);
+
+        //保持登录的账号发送心跳
+        for (User user : loginPhoneUserMap.values()) {
+            schedule.scheduleWithFixedDelay(() -> {
+                user.client.send(new TdApi.SetOption("online", new TdApi.OptionValueBoolean(true)), obj -> {
+                    if (!(obj instanceof TdApi.Ok)) {
+                        mainUser.print(user.phoneNumber + "子-账号设置登录状态失败！！！！！！！！！！！！！！！！！！！！！");
+                    }
+                });
+            }, 1, 5, TimeUnit.MINUTES);
+        }
+    }
 }

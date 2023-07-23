@@ -1,9 +1,9 @@
 package org.drinkless.user.message.handler;
 
 import org.drinkless.tdlib.TdApi;
-import org.drinkless.user.User;
+import org.drinkless.user.MainUser;
 
 public interface LastMsgHandler {
 
-    void handle(User clientUser, TdApi.UpdateChatLastMessage updateChat);
+    void handle(MainUser clientMainUser, TdApi.UpdateChatLastMessage updateChat);
 }
