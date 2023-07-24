@@ -21,16 +21,14 @@ public class LastMsgTipOtherGroupHandler implements LastMsgHandler{
             return;
         }
         long userId = ((TdApi.MessageSenderUser)sender).userId;
-        TdApi.User user = clientMainUser.users.get(userId);
-        if (user == null) {
-            return;
-        }
         if (System.currentTimeMillis() - clientMainUser.userLastMsgTime.getOrDefault(userId, 0L) < TimeUnit.MINUTES.toMillis(clientMainUser.checkInterval)) {
             return;
         }
         clientMainUser.userLastMsgTime.put(userId, System.currentTimeMillis());
-        String userName = Optional.ofNullable(user.usernames).map(usernames -> usernames.activeUsernames).filter(names -> names.length > 0).map(names -> names[0]).orElse("");
-        if ("".equals(userName) || clientMainUser.noListenUserId.contains(userId) || clientMainUser.noListenUserName.contains(userName)) {
+        TdApi.User user = clientMainUser.users.get(userId);
+        String firstName = Optional.ofNullable(user).map(u -> u.firstName).orElse("未知昵称");
+        String userName = Optional.ofNullable(user).map(u -> u.usernames).map(usernames -> usernames.activeUsernames).filter(names -> names.length > 0).map(names -> names[0]).orElse("未知用户名");
+        if (clientMainUser.noListenUserId.contains(userId) || clientMainUser.noListenUserName.contains(userName)) {
             return;
         }
         TdApi.Chat room = clientMainUser.chats.get(updateChat.lastMessage.chatId);
@@ -41,10 +39,10 @@ public class LastMsgTipOtherGroupHandler implements LastMsgHandler{
         } else {
             msg = "非文字消息:\n" + content.getClass().getSimpleName();
         }
-        msg = "\"" + user.firstName + "-" + userName + "\", 在\"" + room.title + "\"中说话\n" + msg;
+        msg = "\""+ userId + "-" + firstName + "-" + userName + "\", 在\"" + room.title + "\"中说话\n" + msg;
         TdApi.FormattedText text = new TdApi.FormattedText(msg, null);
         TdApi.InputMessageContent sendContent = new TdApi.InputMessageText(text, false, true);
-        clientMainUser.client.send(new TdApi.SendMessage(clientMainUser.receiveGroupId, 0, 0, null, null, sendContent), clientMainUser.defaultHandler);
+        clientMainUser.client.send(new TdApi.SendMessage(clientMainUser.receiveGroupId, 0, 0, null, null, sendContent), obj -> {});
     }
 
 }

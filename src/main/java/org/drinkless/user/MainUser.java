@@ -49,9 +49,9 @@ public class MainUser {
 
     public long receiveGroupId;
 
-    private final Map<Long, Long> lastMsgId = new HashMap<>();
+    private final Map<Long, Long> lastMsgId = new ConcurrentHashMap<>();
 
-    public final Map<Long, Long> userLastMsgTime = new HashMap<>();
+    public final Map<Long, Long> userLastMsgTime = new ConcurrentHashMap<>();
 
     public Client client;
 
