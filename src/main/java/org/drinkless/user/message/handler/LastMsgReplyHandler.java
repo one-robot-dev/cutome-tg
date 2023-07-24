@@ -21,7 +21,6 @@ public class LastMsgReplyHandler implements LastMsgHandler{
         if (user != null && clientMainUser.phoneNumber.equals(user.phoneNumber)) {
             return;
         }
-        clientMainUser.userLastMsgTime.put(userId, System.currentTimeMillis());
         TdApi.MessageContent content = updateChat.lastMessage.content;
         if (content.getConstructor() != TdApi.MessageText.CONSTRUCTOR) {
             return;
