@@ -18,7 +18,7 @@ public class LastMsgReplyHandler implements LastMsgHandler{
         TdApi.MessageSender sender = updateChat.lastMessage.senderId;
         long userId = ((TdApi.MessageSenderUser)sender).userId;
         TdApi.User user = clientMainUser.users.get(userId);
-        if (user == null || clientMainUser.phoneNumber.equals(user.phoneNumber)) {
+        if (user != null && clientMainUser.phoneNumber.equals(user.phoneNumber)) {
             return;
         }
         clientMainUser.userLastMsgTime.put(userId, System.currentTimeMillis());
