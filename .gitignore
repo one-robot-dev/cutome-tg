@@ -1,1 +1,3 @@
 ﻿target
+tdlib/tdlib_*
+.idea
