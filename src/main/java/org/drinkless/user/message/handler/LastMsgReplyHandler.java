@@ -36,7 +36,7 @@ public class LastMsgReplyHandler implements LastMsgHandler{
         }
         TdApi.FormattedText text = new TdApi.FormattedText(reply, null);
         TdApi.InputMessageContent sendContent = new TdApi.InputMessageText(text, false, true);
-        clientMainUser.client.send(new TdApi.SendMessage(updateChat.chatId, 0, 0, null, null, sendContent), clientMainUser.defaultHandler);
+        clientMainUser.client.send(new TdApi.SendMessage(updateChat.chatId, 0, 0, null, null, sendContent), object -> {});
     }
 
 }
