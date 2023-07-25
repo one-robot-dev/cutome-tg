@@ -179,6 +179,8 @@ public class User {
                     System.err.println("Receive an error:" + newLine + object);
                     onAuthorizationStateUpdated(null); // repeat last action
                     break;
+                case TdApi.Ok.CONSTRUCTOR:
+                    break;
                 default:
                     System.err.println("Receive wrong response from TDLib:" + newLine + object);
             }

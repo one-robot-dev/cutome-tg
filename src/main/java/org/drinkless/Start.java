@@ -13,10 +13,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class Start {
 
     public static Properties appProperties;
+
+    public static Set<String> specGroupReply = Collections.emptySet();
+
+    public static Set<String> likeMatchGroupReply = Collections.emptySet();
+
+    public static Set<String> likeMatchUserReply = Collections.emptySet();
+
+    public static Set<String> specUserReply = Collections.emptySet();
 
     private static final MainUser mainUser = new MainUser();
 
@@ -59,23 +68,27 @@ public class Start {
     public static boolean refreshProperties(MainUser mainUser) {
         try {
             loadProperties();
-            String phone = appProperties.getProperty("主账号");
+            String phone = appProperties.getProperty("主账号", "");
             String noListenerUserId = appProperties.getProperty("不监听的用户id","");
             String noListenerUserName = appProperties.getProperty("不监听的用户名","");
-            String receiveMsgGroup = appProperties.getProperty("接收消息提醒的群");
+            String receiveMsgGroup = appProperties.getProperty("接收消息提醒的群", "");
             String checkInterval = appProperties.getProperty("每个用户消息监听间隔", "10");
+            String specGroupReply = appProperties.getProperty("群聊针对回复关键词", "");
+            String likeMatchGroupReply = appProperties.getProperty("群聊模糊匹配关键词", "");
+            String specUserReply = appProperties.getProperty("私聊针对回复关键词", "");
+            String likeMatchUserReply = appProperties.getProperty("私聊模糊匹配关键词", "");
+            Start.specGroupReply = Arrays.stream(specGroupReply.split(",")).filter(s -> !s.trim().equals("")).collect(Collectors.toSet());
+            Start.likeMatchGroupReply = Arrays.stream(likeMatchGroupReply.split(",")).filter(s -> !s.trim().equals("")).collect(Collectors.toSet());
+            Start.specUserReply = Arrays.stream(specUserReply.split(",")).filter(s -> !s.trim().equals("")).collect(Collectors.toSet());
+            Start.likeMatchUserReply = Arrays.stream(likeMatchUserReply.split(",")).filter(s -> !s.trim().equals("")).collect(Collectors.toSet());
             Set<Long> noListenUserId = new HashSet<>();
-            if (noListenerUserId != null && !noListenerUserId.trim().equals("")) {
+            if (!noListenerUserId.trim().equals("")) {
                 for (String id : noListenerUserId.split(",")) {
                     noListenUserId.add(Long.parseLong(id)) ;
                 }
             }
-            if (phone == null || "".equals(phone)) {
+            if (phone.trim().equals("")) {
                 System.out.print("必须配置主账号");
-                return false;
-            }
-            if (receiveMsgGroup == null || "".equals(receiveMsgGroup)) {
-                System.out.print("必须配置接收消息提醒的group");
                 return false;
             }
             Set<String> noListerName = new HashSet<>(Arrays.asList(noListenerUserName.split(",")));

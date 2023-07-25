@@ -80,7 +80,7 @@ public class MainUser {
 
     private final String newLine = System.getProperty("line.separator");
 //    private final String commandsLine = "Enter command (gcs - GetChats, gc <chatId> - GetChat, me - GetMe, sm <chatId> <message> - SendMessage, lo - LogOut, q - Quit): ";
-    private final String commandsLine = "命令选项\n\t命令1：getId 用户名1,用户名2,...\t含义：根据username获取id\n\t命令2：me\t\t\t\t\t\t含义：获取自己的信息\n\t命令3：refresh_prop\t\t\t\t含义：重新加载配置，不支持刷新主账号\n请输入命令: ";
+    private final String commandsLine = "命令选项\n\t命令1：getId 用户名1,用户名2,...\t含义：根据username获取id\n\t命令2：me\t\t\t\t含义：获取自己的信息\n\t命令3：refresh_prop\t\t\t\t含义：重新加载配置，不支持刷新主账号\n\t命令4：q\t\t\t\t含义：退出程序\n请输入命令: ";
     private volatile String currentPrompt = null;
 
     public void start() throws InterruptedException {
@@ -97,7 +97,7 @@ public class MainUser {
         client = Client.create(new UpdateHandler(this), null, null);
 
         // test Client.execute
-        defaultHandler.onResult(Client.execute(new TdApi.GetTextEntities("@telegram /test_command https://telegram.org telegram.me @gif @test")));
+        Client.execute(new TdApi.GetTextEntities("@telegram /test_command https://telegram.org telegram.me @gif @test"));
 
         // main loop
         // await authorization
