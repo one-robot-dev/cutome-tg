@@ -63,6 +63,9 @@ public class LastMsgReplyHandler implements LastMsgHandler{
             }
         }
         reply = replyProp.getProperty(msgKey);
+        if (reply == null) {
+            reply = isGroup ? Start.appProperties.getProperty("群聊通用回复") : Start.appProperties.getProperty("私聊通用回复");
+        }
         if (reply == null || reply.trim().equals("")) {
             return;
         }
