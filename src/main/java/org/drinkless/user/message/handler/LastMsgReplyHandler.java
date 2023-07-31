@@ -63,14 +63,16 @@ public class LastMsgReplyHandler implements LastMsgHandler{
             }
         }
         reply = replyProp.getProperty(msgKey);
+        boolean commonReply = false;
         if (reply == null) {
             reply = isGroup ? Start.appProperties.getProperty("群聊通用回复") : Start.appProperties.getProperty("私聊通用回复");
+            commonReply = true;
         }
         if (reply == null || reply.trim().equals("")) {
             return;
         }
         Set<String> specReply = isGroup ? Start.specGroupReply : Start.specUserReply;
-        long replyToMessageId =  specReply.contains(msgKey)  ? updateChat.lastMessage.id : 0;
+        long replyToMessageId =  commonReply || specReply.contains(msgKey) ? updateChat.lastMessage.id : 0;
         TdApi.FormattedText text = new TdApi.FormattedText(reply, null);
         TdApi.InputMessageContent sendContent = new TdApi.InputMessageText(text, false, true);
         clientMainUser.client.send(new TdApi.SendMessage(updateChat.chatId, 0, replyToMessageId, null, null, sendContent), object -> {});
