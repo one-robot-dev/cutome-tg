@@ -49,6 +49,11 @@ public class Start {
         }
         //加载保持登录状态的账号
         loadLoginUser();
+        boolean pass = SafeUtil.checkKey(appProperties.getProperty("key"));
+        if (!pass) {
+            System.out.println("机器码: " + SafeUtil.getMachineCode());
+            return;
+        }
         //登陆主用户
         mainUser.start();
         //启动定时任务
