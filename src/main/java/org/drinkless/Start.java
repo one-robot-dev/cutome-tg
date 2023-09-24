@@ -52,6 +52,8 @@ public class Start {
         boolean pass = SafeUtil.checkKey(appProperties.getProperty("key"));
         if (!pass) {
             System.out.println("机器码: " + SafeUtil.getMachineCode());
+            System.out.print("输入任意字符退出：");
+            new Scanner(System.in).nextLine();
             return;
         }
         //登陆主用户
@@ -110,7 +112,7 @@ public class Start {
     }
 
     private static void loadProperties() throws Exception{
-        String path = Thread.currentThread().getContextClassLoader().getResource("").getPath();
+        String path = "./";
         File file = new File(path,"app.properties");
         appProperties = new Properties();
         appProperties.load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));

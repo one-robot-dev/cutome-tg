@@ -26,7 +26,7 @@ public class SafeUtil {
         while (true) {
             System.out.print("输入机器码：");
             String machineCode = scanner.nextLine().trim();
-            System.out.print("输入截止时间：");
+            System.out.print("输入截止时间(例如：2020-01-01 00:00:00)：");
             String endTime = scanner.nextLine().trim();
             System.out.println();
             SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -36,7 +36,7 @@ public class SafeUtil {
             info.setEndTime(time);
             String key = encodeUserInfo(info);
             System.out.println(key);
-            System.out.println("输入1继续，输入其他退出：");
+            System.out.print("输入1继续，输入其他退出：");
             String flag = scanner.nextLine().trim();
             if (!"1".equals(flag)) {
                 break;
